@@ -15,9 +15,10 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/graphql", "/graphiql/**", "/", "/products", "/users", "/categories").permitAll()
+                .requestMatchers("/graphql", "/graphiql/**", "/", "/products", "/users", "/categories", "/upload/**", "/images/**").permitAll()
                 .anyRequest().authenticated()
-            );
+            )
+            .headers(headers -> headers.frameOptions().sameOrigin());
         
         return http.build();
     }

@@ -39,8 +39,11 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Hình ảnh (URL)</label>
-                                <input type="url" class="form-control" id="images">
+                                <label class="form-label">Hình ảnh</label>
+                                <input type="file" class="form-control" id="imageFile" accept="image/*">
+                                <input type="hidden" id="images">
+                                <div class="form-text">Chọn file ảnh để upload</div>
+                                <div id="imagePreview" class="mt-2"></div>
                             </div>
                         </div>
                     </div>
@@ -162,6 +165,32 @@
             });
         }
 
+        // Handle file upload
+        $('#imageFile').on('change', async function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                try {
+                    const response = await fetch('/upload/image', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success === 'true') {
+                        $('#images').val(result.imageUrl);
+                        $('#imagePreview').html(`<img src="${result.imageUrl}" alt="Preview" style="max-width: 200px; max-height: 200px;">`);
+                    } else {
+                        alert('Lỗi upload: ' + result.error);
+                    }
+                } catch (error) {
+                    alert('Lỗi upload: ' + error.message);
+                }
+            }
+        });
+
         // Form submission
         $('#categoryForm').on('submit', async function(e) {
             e.preventDefault();
@@ -222,6 +251,9 @@
                 $('#categoryId').val(category.id);
                 $('#name').val(category.name);
                 $('#images').val(category.images);
+                if (category.images) {
+                    $('#imagePreview').html(`<img src="${category.images}" alt="Current image" style="max-width: 200px; max-height: 200px;">`);
+                }
             }
         }
 
@@ -245,6 +277,8 @@
         function resetForm() {
             $('#categoryForm')[0].reset();
             $('#categoryId').val('');
+            $('#images').val('');
+            $('#imagePreview').html('');
         }
     </script>
 
