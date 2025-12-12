@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Người dùng</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">GraphQL Demo</a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/products">Products</a>
+                <a class="nav-link active" href="/users">Users</a>
+                <a class="nav-link" href="/categories">Categories</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1>Quản lý Người dùng</h1>
+        
+        <!-- Form thêm/sửa người dùng -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Thêm/Sửa Người dùng</h5>
+            </div>
+            <div class="card-body">
+                <form id="userForm">
+                    <input type="hidden" id="userId">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Họ tên</label>
+                                <input type="text" class="form-control" id="fullname" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Mật khẩu</label>
+                                <input type="password" class="form-control" id="password" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Số điện thoại</label>
+                                <input type="tel" class="form-control" id="phone">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Danh mục quan tâm</label>
+                        <select class="form-select" id="categoryIds" multiple>
+                        </select>
+                        <div class="form-text">Giữ Ctrl để chọn nhiều danh mục</div>
+                    </div>
+                    <button type="submit" class="btn btn-success">Lưu</button>
+                    <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Bảng hiển thị người dùng -->
+        <div class="card">
+            <div class="card-header">
+                <h5>Danh sách Người dùng</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Họ tên</th>
+                                <th>Email</th>
+                                <th>Số điện thoại</th>
+                                <th>Danh mục</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // GraphQL endpoint
+        const GRAPHQL_URL = '/graphql';
+
+        // Load initial data
+        $(document).ready(function() {
+            loadCategories();
+            loadUsers();
+        });
+
+        // GraphQL query function
+        async function graphqlQuery(query, variables = {}) {
+            try {
+                const response = await fetch(GRAPHQL_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        variables: variables
+                    })
+                });
+                const result = await response.json();
+                if (result.errors) {
+                    console.error('GraphQL errors:', result.errors);
+                    alert('Lỗi: ' + result.errors[0].message);
+                }
+                return result.data;
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Lỗi kết nối: ' + error.message);
+            }
+        }
+
+        // Load users
+        async function loadUsers() {
+            const query = `
+                query {
+                    getAllUsers {
+                        id
+                        fullname
+                        email
+                        phone
+                        categories {
+                            id
+                            name
+                        }
+                    }
+                }
+            `;
+            const data = await graphqlQuery(query);
+            if (data) {
+                displayUsers(data.getAllUsers);
+            }
+        }
+
+        // Display users in table
+        function displayUsers(users) {
+            const tbody = $('#userTableBody');
+            tbody.empty();
+            
+            users.forEach(user => {
+                const categories = user.categories ? user.categories.map(c => c.name).join(', ') : 'N/A';
+                const row = `
+                    <tr>
+                        <td>${user.id}</td>
+                        <td>${user.fullname}</td>
+                        <td>${user.email}</td>
+                        <td>${user.phone || 'N/A'}</td>
+                        <td>${categories}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" onclick="editUser(${user.id})">Sửa</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})">Xóa</button>
+                        </td>
+                    </tr>
+                `;
+                tbody.append(row);
+            });
+        }
+
+        // Load categories for dropdown
+        async function loadCategories() {
+            const query = `
+                query {
+                    getAllCategories {
+                        id
+                        name
+                    }
+                }
+            `;
+            const data = await graphqlQuery(query);
+            if (data) {
+                const select = $('#categoryIds');
+                select.empty();
+                data.getAllCategories.forEach(category => {
+                    select.append(`<option value="${category.id}">${category.name}</option>`);
+                });
+            }
+        }
+
+        // Form submission
+        $('#userForm').on('submit', async function(e) {
+            e.preventDefault();
+            
+            const userId = $('#userId').val();
+            const selectedCategories = $('#categoryIds').val() || [];
+            
+            const input = {
+                fullname: $('#fullname').val(),
+                email: $('#email').val(),
+                password: $('#password').val(),
+                phone: $('#phone').val(),
+                categoryIds: selectedCategories
+            };
+
+            let query, variables;
+            if (userId) {
+                // Update
+                query = `
+                    mutation($id: ID!, $input: UserInput!) {
+                        updateUser(id: $id, input: $input) {
+                            id
+                            fullname
+                        }
+                    }
+                `;
+                variables = { id: userId, input };
+            } else {
+                // Create
+                query = `
+                    mutation($input: UserInput!) {
+                        createUser(input: $input) {
+                            id
+                            fullname
+                        }
+                    }
+                `;
+                variables = { input };
+            }
+
+            const data = await graphqlQuery(query, variables);
+            if (data) {
+                alert('Lưu thành công!');
+                resetForm();
+                loadUsers();
+            }
+        });
+
+        // Edit user
+        async function editUser(id) {
+            const query = `
+                query($id: ID!) {
+                    getUser(id: $id) {
+                        id
+                        fullname
+                        email
+                        phone
+                        categories {
+                            id
+                        }
+                    }
+                }
+            `;
+            const data = await graphqlQuery(query, { id });
+            if (data && data.getUser) {
+                const user = data.getUser;
+                $('#userId').val(user.id);
+                $('#fullname').val(user.fullname);
+                $('#email').val(user.email);
+                $('#password').val(''); // Don't show password
+                $('#phone').val(user.phone);
+                
+                // Select categories
+                const categoryIds = user.categories ? user.categories.map(c => c.id.toString()) : [];
+                $('#categoryIds').val(categoryIds);
+            }
+        }
+
+        // Delete user
+        async function deleteUser(id) {
+            if (confirm('Bạn có chắc muốn xóa người dùng này?')) {
+                const query = `
+                    mutation($id: ID!) {
+                        deleteUser(id: $id)
+                    }
+                `;
+                const data = await graphqlQuery(query, { id });
+                if (data && data.deleteUser) {
+                    alert('Xóa thành công!');
+                    loadUsers();
+                }
+            }
+        }
+
+        // Reset form
+        function resetForm() {
+            $('#userForm')[0].reset();
+            $('#userId').val('');
+            $('#categoryIds').val([]);
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

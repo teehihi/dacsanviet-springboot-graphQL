@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Danh mục</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">GraphQL Demo</a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/products">Products</a>
+                <a class="nav-link" href="/users">Users</a>
+                <a class="nav-link active" href="/categories">Categories</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1>Quản lý Danh mục</h1>
+        
+        <!-- Form thêm/sửa danh mục -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Thêm/Sửa Danh mục</h5>
+            </div>
+            <div class="card-body">
+                <form id="categoryForm">
+                    <input type="hidden" id="categoryId">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Tên danh mục</label>
+                                <input type="text" class="form-control" id="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Hình ảnh (URL)</label>
+                                <input type="url" class="form-control" id="images">
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success">Lưu</button>
+                    <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Bảng hiển thị danh mục -->
+        <div class="card">
+            <div class="card-header">
+                <h5>Danh sách Danh mục</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Tên</th>
+                                <th>Hình ảnh</th>
+                                <th>Số sản phẩm</th>
+                                <th>Số người dùng</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="categoryTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // GraphQL endpoint
+        const GRAPHQL_URL = '/graphql';
+
+        // Load initial data
+        $(document).ready(function() {
+            loadCategories();
+        });
+
+        // GraphQL query function
+        async function graphqlQuery(query, variables = {}) {
+            try {
+                const response = await fetch(GRAPHQL_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        variables: variables
+                    })
+                });
+                const result = await response.json();
+                if (result.errors) {
+                    console.error('GraphQL errors:', result.errors);
+                    alert('Lỗi: ' + result.errors[0].message);
+                }
+                return result.data;
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Lỗi kết nối: ' + error.message);
+            }
+        }
+
+        // Load categories
+        async function loadCategories() {
+            const query = `
+                query {
+                    getAllCategories {
+                        id
+                        name
+                        images
+                        products {
+                            id
+                        }
+                        users {
+                            id
+                        }
+                    }
+                }
+            `;
+            const data = await graphqlQuery(query);
+            if (data) {
+                displayCategories(data.getAllCategories);
+            }
+        }
+
+        // Display categories in table
+        function displayCategories(categories) {
+            const tbody = $('#categoryTableBody');
+            tbody.empty();
+            
+            categories.forEach(category => {
+                const productCount = category.products ? category.products.length : 0;
+                const userCount = category.users ? category.users.length : 0;
+                const imageDisplay = category.images ? 
+                    `<img src="${category.images}" alt="${category.name}" style="width: 50px; height: 50px; object-fit: cover;">` : 
+                    'N/A';
+                
+                const row = `
+                    <tr>
+                        <td>${category.id}</td>
+                        <td>${category.name}</td>
+                        <td>${imageDisplay}</td>
+                        <td>${productCount}</td>
+                        <td>${userCount}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" onclick="editCategory(${category.id})">Sửa</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteCategory(${category.id})">Xóa</button>
+                        </td>
+                    </tr>
+                `;
+                tbody.append(row);
+            });
+        }
+
+        // Form submission
+        $('#categoryForm').on('submit', async function(e) {
+            e.preventDefault();
+            
+            const categoryId = $('#categoryId').val();
+            const input = {
+                name: $('#name').val(),
+                images: $('#images').val()
+            };
+
+            let query, variables;
+            if (categoryId) {
+                // Update
+                query = `
+                    mutation($id: ID!, $input: CategoryInput!) {
+                        updateCategory(id: $id, input: $input) {
+                            id
+                            name
+                        }
+                    }
+                `;
+                variables = { id: categoryId, input };
+            } else {
+                // Create
+                query = `
+                    mutation($input: CategoryInput!) {
+                        createCategory(input: $input) {
+                            id
+                            name
+                        }
+                    }
+                `;
+                variables = { input };
+            }
+
+            const data = await graphqlQuery(query, variables);
+            if (data) {
+                alert('Lưu thành công!');
+                resetForm();
+                loadCategories();
+            }
+        });
+
+        // Edit category
+        async function editCategory(id) {
+            const query = `
+                query($id: ID!) {
+                    getCategory(id: $id) {
+                        id
+                        name
+                        images
+                    }
+                }
+            `;
+            const data = await graphqlQuery(query, { id });
+            if (data && data.getCategory) {
+                const category = data.getCategory;
+                $('#categoryId').val(category.id);
+                $('#name').val(category.name);
+                $('#images').val(category.images);
+            }
+        }
+
+        // Delete category
+        async function deleteCategory(id) {
+            if (confirm('Bạn có chắc muốn xóa danh mục này?')) {
+                const query = `
+                    mutation($id: ID!) {
+                        deleteCategory(id: $id)
+                    }
+                `;
+                const data = await graphqlQuery(query, { id });
+                if (data && data.deleteCategory) {
+                    alert('Xóa thành công!');
+                    loadCategories();
+                }
+            }
+        }
+
+        // Reset form
+        function resetForm() {
+            $('#categoryForm')[0].reset();
+            $('#categoryId').val('');
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
