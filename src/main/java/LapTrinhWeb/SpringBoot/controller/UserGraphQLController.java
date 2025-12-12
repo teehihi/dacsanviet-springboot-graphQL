@@ -29,8 +29,8 @@ public class UserGraphQLController {
     }
 
     @QueryMapping
-    public Optional<User> getUser(@Argument Long id) {
-        return userRepository.findById(id);
+    public User getUser(@Argument Long id) {
+        return userRepository.findById(id).orElse(null);
     }
     
     @QueryMapping

@@ -2,8 +2,10 @@ package LapTrinhWeb.SpringBoot.service;
 
 import LapTrinhWeb.SpringBoot.entity.User;
 import LapTrinhWeb.SpringBoot.entity.Category;
+import LapTrinhWeb.SpringBoot.entity.UserCategory;
 import LapTrinhWeb.SpringBoot.repository.UserRepository;
 import LapTrinhWeb.SpringBoot.repository.CategoryRepository;
+import LapTrinhWeb.SpringBoot.repository.UserCategoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,15 +24,18 @@ public class UserCategoryService {
     
     @Autowired
     private CategoryRepository categoryRepository;
+    
+    @Autowired
+    private UserCategoryRepository userCategoryRepository;
 
     public List<Category> getCategoriesByUserId(Long userId) {
         try {
-            User user = userRepository.findById(userId).orElse(null);
-            if (user != null && user.getCategories() != null) {
-                // Force initialization of lazy collection
-                user.getCategories().size();
-                return user.getCategories().stream().collect(Collectors.toList());
-            }
+            // Use direct query to avoid N+1 problem
+            List<UserCategory> userCategories = userCategoryRepository.findByUserId(userId);
+            return userCategories.stream()
+                .map(uc -> categoryRepository.findById(uc.getCategoryId()).orElse(null))
+                .filter(category -> category != null)
+                .collect(Collectors.toList());
         } catch (Exception e) {
             System.err.println("Error getting categories for user " + userId + ": " + e.getMessage());
         }
@@ -39,12 +44,12 @@ public class UserCategoryService {
 
     public List<User> getUsersByCategoryId(Long categoryId) {
         try {
-            Category category = categoryRepository.findById(categoryId).orElse(null);
-            if (category != null && category.getUsers() != null) {
-                // Force initialization of lazy collection
-                category.getUsers().size();
-                return category.getUsers().stream().collect(Collectors.toList());
-            }
+            // Use direct query to avoid N+1 problem
+            List<UserCategory> userCategories = userCategoryRepository.findByCategoryId(categoryId);
+            return userCategories.stream()
+                .map(uc -> userRepository.findById(uc.getUserId()).orElse(null))
+                .filter(user -> user != null)
+                .collect(Collectors.toList());
         } catch (Exception e) {
             System.err.println("Error getting users for category " + categoryId + ": " + e.getMessage());
         }

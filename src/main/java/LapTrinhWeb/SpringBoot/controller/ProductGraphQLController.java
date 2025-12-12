@@ -45,8 +45,8 @@ public class ProductGraphQLController {
     }
 
     @QueryMapping
-    public Optional<Product> getProduct(@Argument Long id) {
-        return productRepository.findById(id);
+    public Product getProduct(@Argument Long id) {
+        return productRepository.findById(id).orElse(null);
     }
 
     @MutationMapping

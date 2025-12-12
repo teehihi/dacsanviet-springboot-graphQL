@@ -29,8 +29,8 @@ public class CategoryGraphQLController {
     }
 
     @QueryMapping
-    public Optional<Category> getCategory(@Argument Long id) {
-        return categoryRepository.findById(id);
+    public Category getCategory(@Argument Long id) {
+        return categoryRepository.findById(id).orElse(null);
     }
     
     @QueryMapping
