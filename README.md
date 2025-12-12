@@ -1,6 +1,6 @@
 # 🌿 SpringBootWithGraphQL - Đặc Sản Việt
 
-> **Spring Boot 5th Midterm Project**  
+> **Spring Boot 5th Midterm Project**
 > Ứng dụng quản lý Đặc Sản Việt sử dụng Spring Boot và GraphQL.
 
 ![Java](https://img.shields.io/badge/Java-21-orange?style=for-the-badge&logo=java)
@@ -398,8 +398,8 @@ query {
 
 **Nguyễn Nhật Thiên (TEE)**
 - 📧 Email: teeforwork21@gmail.com
-- 🔗 GitHub: github.com/teehihi
-- 🌐 Linktree: linktr.ee/nkqt.tee
+- 🔗 GitHub: [github.com/teehihi](github.com/teehihi)
+- 🌐 Linktree: [linktr.ee/nkqt.tee](linktr.ee/nkqt.tee)
 
 ---
 *Made with ❤️ for Web Programming Course*
